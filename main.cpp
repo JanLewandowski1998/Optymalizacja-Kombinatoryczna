@@ -45,7 +45,7 @@ private:
     std::vector<int> m_tasks;
 
     int m_score = -1;
-    std::vector<Task> m_solution;
+    std::vector<std::vector<Task>> m_solution;
 
 
 private:
@@ -91,6 +91,8 @@ private:
 public:
     void readFromFile(std::string fileName = "instance.txt")
     {
+        m_solution.clear();
+
         std::ifstream file;
         file.open(fileName.c_str(), std::ios::in);
 
@@ -128,6 +130,7 @@ public:
     void solveGreedy()
     {
         m_solution.clear(); //Czyszczenie solucji:
+        m_solution.resize(m_procsCount);
 
         std::vector<int> tasksLeft = m_tasks; //Vector zawierający pozostałe zadania:
         std::sort(tasksLeft.begin(), tasksLeft.end()); //Sortowanie:
@@ -166,8 +169,9 @@ public:
                                         now + tasksLeft[tasksLeft.size() - 1],
                                         freeProcs[freeProcs.size() - 1]});
 
-                m_solution.push_back(tasksRunning[tasksRunning.size() - 1]);
-                if (m_solution[m_solution.size() - 1].finish > m_score) m_score = m_solution[m_solution.size() - 1].finish;
+                int p = tasksRunning[tasksRunning.size() - 1].proc;
+                m_solution[p].push_back(tasksRunning[tasksRunning.size() - 1]);
+                if (m_solution[p][m_solution[p].size() - 1].finish > m_score) m_score = m_solution[p][m_solution[p].size() - 1].finish;
                 m_insert_keep_sorted(timestamps, now + tasksLeft[tasksLeft.size() - 1]);
                 tasksLeft.pop_back();
                 freeProcs.pop_back();
@@ -187,10 +191,11 @@ public:
 
     void printSolution()
     {
-        int solutionSize = m_solution.size();
-        for (int i = 0; i < solutionSize; i++)
+        for (int i = 0; i < m_procsCount; i++)
         {
-            std::cout << m_solution[i] << '\n';
+            int s = m_solution[i].size();
+            for (int j = 0; j < s; j++)
+                std::cout << m_solution[i][j] << '\n';
         }
     }
 
@@ -206,7 +211,7 @@ public:
 
     std::vector<int>& getTasks() {return m_tasks;}
 
-    std::vector<Task>& getSolution() {return m_solution;}
+    std::vector<std::vector<Task>>& getSolution() {return m_solution;}
 };
 
 void greedy(bool showWeakOnly = false, std::string path = "instance.txt")
@@ -236,17 +241,18 @@ void greedy(bool showWeakOnly = false, std::string path = "instance.txt")
     std::cout << "score: " << instance.getScore();
     if (instance.isWithOptimal()) std::cout << ", optimal: " << instance.getOptimal() << ", (%): " << (double) instance.getScore() / instance.getOptimal() * 100 << "%";
 
-    //std::cout << "solution:\n";
+    //std::cout << "\n\nsolution:\n";
     //instance.printSolution();
 
-    std::cout << "\n-----------------------------\n";//exit(0);
+    std::cout << "\n-----------------------------\n";
 }
 
 void random()
 {
     for (int i = 1; i <= 1000; i++)
     {
-        generateInstance(3, 1000, 2000, 100000, 1000, true);
+        //generateInstance(3, 1000, 2000, 100000, 1000, true);
+        generateInstance(3, 3, 12, 12, 3, true);
         greedy(true);
     }
 }
