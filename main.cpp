@@ -239,7 +239,7 @@ void greedy(bool showWeakOnly = false, std::string path = "instance.txt")
     //std::cout << "solution:\n";
     //instance.printSolution();
 
-    std::cout << "\n-----------------------------\n";exit(0);
+    std::cout << "\n-----------------------------\n";//exit(0);
 }
 
 void random()
