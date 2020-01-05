@@ -179,6 +179,121 @@ public:
         }
     }
 
+	void swapTasks(int proc1, int t1, int proc2, int t2)
+	{
+		Task task1 = m_solution[proc1][t1];
+		Task task2 = m_solution[proc2][t2];
+		task1.proc = proc2;
+		task2.proc = proc1;
+		m_solution[proc1].erase(m_solution[proc1].begin() + t1);
+		m_solution[proc2].erase(m_solution[proc2].begin() + t2);
+
+		for (int i = t1; i < m_solution[proc1].size(); i++)
+		{
+			Task &tmp = m_solution[proc1][i];
+
+			if (i == 0)
+				tmp.start = 0;
+			else
+				tmp.start = m_solution[proc1][i - 1].finish;
+
+			tmp.finish = tmp.start + tmp.duration;
+		}
+		for (int i = t2; i < m_solution[proc2].size(); i++)
+		{
+			Task &tmp = m_solution[proc2][i];
+
+			if (i == 0)
+				tmp.start = 0;
+			else
+				tmp.start = m_solution[proc2][i - 1].finish;
+
+			tmp.finish = tmp.start + tmp.duration;
+		}
+
+		Task tmp = m_solution[proc1].back();
+		task2.start = tmp.finish;
+		task2.finish = task2.duration + task2.start;
+		m_solution[proc1].push_back(task2);
+
+		tmp = m_solution[proc2].back();
+		task1.start = tmp.finish;
+		task1.finish = task1.duration + task1.start;
+		m_solution[proc2].push_back(task1);
+
+		m_score = (m_solution[0].back()).finish;
+		for (int i = 1; i < m_solution.size(); i++)
+			if (m_score < (m_solution[i].back()).finish)
+				m_score = (m_solution[i].back()).finish;
+	}
+
+	bool solveLocalSearch()
+	{
+		//Find procsFinishedLast and procsFinishedFirst
+		std::vector<int> procsFinishedLast;
+		std::vector<int> procsFinishedFirst;
+		int firstsTime = -1;
+		for (int i = 0; i < m_solution.size(); i++)
+		{
+			Task lastTask = m_solution[i].back();
+			if (firstsTime == -1) 
+			{
+				procsFinishedFirst.push_back(i);
+				firstsTime = lastTask.finish;
+
+				if (lastTask.finish == m_score)
+					procsFinishedLast.push_back(i);
+			}
+			else
+			{
+				if (lastTask.finish < firstsTime)
+				{
+					firstsTime = lastTask.finish;
+					procsFinishedFirst = { i };
+				}
+				else if (lastTask.finish == firstsTime)
+				{
+					procsFinishedFirst.push_back(i);
+				}
+
+				if (lastTask.finish == m_score)
+				{
+					procsFinishedLast.push_back(i);
+				}
+			}
+		}
+
+		//Find if there is any usefull tasks shift possible
+		for (int i = 0; i < procsFinishedFirst.size(); i++)
+		{
+			int firstProc = procsFinishedFirst[i];
+			int firstProcEndTime = (m_solution[firstProc].back()).finish;
+			for (int j = 0; j < procsFinishedLast.size(); j++)
+			{
+				int lastProc = procsFinishedLast[j];
+				int lastProcEndTime = (m_solution[lastProc].back()).finish;
+				for (int firstTask = 0; firstTask < m_solution[firstProc].size(); firstTask++)
+				{
+					int firstTaskTime = m_solution[firstProc][firstTask].duration;
+					for (int lastTask = 0; lastTask < m_solution[lastProc].size(); lastTask++)
+					{
+						int lastTaskTime = m_solution[lastProc][lastTask].duration;
+						int newFirstProcEndTime = firstProcEndTime - firstTaskTime + lastTaskTime;
+						int newLastProcEndTime = lastProcEndTime - lastTaskTime + firstTaskTime;
+
+						if (newFirstProcEndTime < lastProcEndTime &&
+							newLastProcEndTime < lastProcEndTime)
+						{
+							swapTasks(firstProc, firstTask, lastProc, lastTask);
+							return 1;
+						}
+					}
+				}
+			}
+		}
+		return 0;
+	}
+
     void printInstance()
     {
         if (m_withOptimal) std::cout << "# " << m_optimal << '\n';
@@ -239,21 +354,57 @@ void greedy(bool showWeakOnly = false, std::string path = "instance.txt")
               << ", tasks: " << instance.getTasksCount() << '\n';
 
     std::cout << "score: " << instance.getScore();
-    if (instance.isWithOptimal()) std::cout << ", optimal: " << instance.getOptimal() << ", (%): " << (double) instance.getScore() / instance.getOptimal() * 100 << "%";
-
-    //std::cout << "\n\nsolution:\n";
+    if (instance.isWithOptimal()) 
+		std::cout << ", optimal: " << instance.getOptimal() << ", (%): " << (double) instance.getScore() / instance.getOptimal() * 100 << "%";
+	std::cout << std::endl;
     //instance.printSolution();
 
     std::cout << "\n-----------------------------\n";
 }
 
+void localSearch(bool showWeakOnly = false, std::string path = "instance.txt")
+{
+	static int count = 1;
+
+	Instance instance;
+	instance.readFromFile(path.c_str());
+
+	instance.solveGreedy();
+	for (; instance.solveLocalSearch(); )
+		continue;
+	if (showWeakOnly)
+	{
+		if (!(((double)instance.getScore() / instance.getOptimal() * 100.0) > 103.0))
+		{
+			std::cout << count++ << " ";
+			return;
+		}
+		count++;
+	}
+
+	//instance.printInstance();
+
+	std::cout << "\nprocessors: " << instance.getProcsCount()
+		<< ", tasks: " << instance.getTasksCount() << '\n';
+
+	std::cout << "score: " << instance.getScore();
+	if (instance.isWithOptimal())
+		std::cout << ", optimal: " << instance.getOptimal() << ", (%): " << (double)instance.getScore() / instance.getOptimal() * 100 << "%";
+	std::cout << std::endl;
+	//instance.printSolution();
+
+	std::cout << "\n-----------------------------\n";
+}
+
 void random()
 {
-    for (int i = 1; i <= 1000; i++)
+    for (int i = 1; i <= 5; i++)
     {
-        //generateInstance(3, 1000, 2000, 100000, 1000, true);
-        generateInstance(3, 3, 12, 12, 3, true);
-        greedy(true);
+        generateInstance(1000, 2000, 10000, 20000, 1000, true);
+		std::cout << "greedy: " << std::endl;
+		greedy(false);
+		std::cout << "localSearch: " << std::endl;
+		localSearch(false);
     }
 }
 
@@ -264,14 +415,16 @@ void ranked()
 
     for (int i = 0; i < nr; i++)
     {
-        greedy(true, paths[i]);
+		std::cout << "greedy: " << std::endl;
+		greedy(false, paths[i]);
+		std::cout << "localSearch: " << std::endl;
+        localSearch(false, paths[i]);
     }
 }
 
 int main()
 {
     srand(time(NULL));
-    //ranked();
-    random();
+	ranked();
     return 0;
 }
